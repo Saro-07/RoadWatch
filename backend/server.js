@@ -307,7 +307,8 @@ app.patch('/api/notifications/read-all/:userId', (req, res) => {
 
 // Verifies that the requesting user has the 'admin' role
 const requireAdmin = (req, res, next) => {
-    const requesterId = req.body.requesterId || req.query.requesterId;
+    // GET/DELETE pass requesterId as query param; POST/PATCH pass it in body
+    const requesterId = (req.body && req.body.requesterId) || req.query.requesterId;
     if (!requesterId) return res.status(401).json({ error: 'Requester ID required.' });
 
     db.get(`SELECT role FROM Users WHERE id = ?`, [requesterId], (err, user) => {
