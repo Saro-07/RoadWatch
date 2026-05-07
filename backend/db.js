@@ -62,6 +62,7 @@ function initializeDb() {
         // Passwords stored as plain text for pre-seeded accounts; new registrations use bcrypt
         db.run(`
             INSERT OR IGNORE INTO Users (username, password, role, area) VALUES 
+            ('admin1', 'admin123', 'admin', 'All'),
             ('citizen1', 'password123', 'citizen', 'Downtown'),
             ('contractor1', 'password123', 'contractor', 'Downtown'),
             ('contractor2', 'password123', 'contractor', 'Uptown'),

@@ -1,12 +1,13 @@
 import React, { useContext, useState } from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
-import { LayoutDashboard, AlertTriangle, Map as MapIcon, List, Bell, LogOut, User } from 'lucide-react';
+import { LayoutDashboard, AlertTriangle, Map as MapIcon, List, Bell, LogOut, User, ShieldCheck } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import ReportIssue from './pages/ReportIssue';
 import MapView from './pages/MapView';
 import Tickets from './pages/Tickets';
 import Login from './pages/Login';
 import Profile from './pages/Profile';
+import AdminPanel from './pages/AdminPanel';
 import { AuthContext } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { NotificationContext } from './context/NotificationContext';
@@ -70,6 +71,15 @@ function AppShell() {
             <User size={20} />
             <span>Profile</span>
           </NavLink>
+
+          {user?.role === 'admin' && (
+            <NavLink to="/admin" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}
+              style={({ isActive }) => isActive ? {} : { color: '#8b5cf6' }}
+            >
+              <ShieldCheck size={20} />
+              <span>Admin Panel</span>
+            </NavLink>
+          )}
         </nav>
 
         <div className="user-profile" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -135,6 +145,7 @@ function AppShell() {
             <Route path="/map" element={<MapView />} />
             <Route path="/tickets" element={<Tickets />} />
             <Route path="/profile" element={<Profile />} />
+            {user?.role === 'admin' && <Route path="/admin" element={<AdminPanel />} />}
           </Routes>
         </div>
       </main>

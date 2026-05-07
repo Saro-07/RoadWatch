@@ -302,6 +302,146 @@ app.patch('/api/notifications/read-all/:userId', (req, res) => {
 });
 
 // ─────────────────────────────────────────────
+// ADMIN MIDDLEWARE
+// ─────────────────────────────────────────────
+
+// Verifies that the requesting user has the 'admin' role
+const requireAdmin = (req, res, next) => {
+    const requesterId = req.body.requesterId || req.query.requesterId;
+    if (!requesterId) return res.status(401).json({ error: 'Requester ID required.' });
+
+    db.get(`SELECT role FROM Users WHERE id = ?`, [requesterId], (err, user) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!user || user.role !== 'admin') {
+            return res.status(403).json({ error: 'Admin access required.' });
+        }
+        next();
+    });
+};
+
+// ─────────────────────────────────────────────
+// ADMIN ENDPOINTS
+// ─────────────────────────────────────────────
+
+const AREAS = ['Downtown', 'Uptown', 'Northside', 'Southside', 'Eastside', 'Westside', 'All'];
+const MANAGED_ROLES = ['contractor', 'official'];
+
+// GET all users (admin only)
+app.get('/api/admin/users', requireAdmin, (req, res) => {
+    db.all(
+        `SELECT id, username, role, area, trustScore, creditPoints FROM Users ORDER BY role, username`,
+        [],
+        (err, rows) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json(rows);
+        }
+    );
+});
+
+// GET platform-wide stats (admin only)
+app.get('/api/admin/stats', requireAdmin, (req, res) => {
+    db.get(`SELECT COUNT(*) as totalUsers FROM Users`, [], (err, userCount) => {
+        if (err) return res.status(500).json({ error: err.message });
+        db.get(`SELECT COUNT(*) as totalTickets FROM Tickets`, [], (err2, ticketCount) => {
+            if (err2) return res.status(500).json({ error: err2.message });
+            db.get(`SELECT COUNT(*) as resolved FROM Tickets WHERE status = 'Completed'`, [], (err3, resolvedCount) => {
+                if (err3) return res.status(500).json({ error: err3.message });
+                res.json({
+                    totalUsers: userCount.totalUsers,
+                    totalTickets: ticketCount.totalTickets,
+                    resolvedTickets: resolvedCount.resolved,
+                });
+            });
+        });
+    });
+});
+
+// POST create a new contractor or official (admin only)
+app.post('/api/admin/users', requireAdmin, async (req, res) => {
+    const { username, password, role, area } = req.body;
+
+    if (!username || !password || !role || !area) {
+        return res.status(400).json({ error: 'username, password, role, and area are all required.' });
+    }
+    if (!MANAGED_ROLES.includes(role)) {
+        return res.status(400).json({ error: `Role must be one of: ${MANAGED_ROLES.join(', ')}` });
+    }
+    if (!AREAS.includes(area)) {
+        return res.status(400).json({ error: `Area must be one of: ${AREAS.join(', ')}` });
+    }
+    if (username.length < 3) return res.status(400).json({ error: 'Username must be at least 3 characters.' });
+    if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+
+    try {
+        const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+        db.run(
+            `INSERT INTO Users (username, password, role, area) VALUES (?, ?, ?, ?)`,
+            [username, hashedPassword, role, area],
+            function (err) {
+                if (err) {
+                    if (err.message.includes('UNIQUE constraint failed')) {
+                        return res.status(409).json({ error: 'Username already taken.' });
+                    }
+                    return res.status(500).json({ error: err.message });
+                }
+                res.status(201).json({
+                    message: `${role} account created successfully.`,
+                    user: { id: this.lastID, username, role, area }
+                });
+            }
+        );
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// PATCH update a user's role or area (admin only)
+app.patch('/api/admin/users/:id', requireAdmin, (req, res) => {
+    const { role, area } = req.body;
+    const userId = req.params.id;
+
+    if (role && !['contractor', 'official', 'citizen'].includes(role)) {
+        return res.status(400).json({ error: 'Invalid role.' });
+    }
+    if (area && !AREAS.includes(area)) {
+        return res.status(400).json({ error: 'Invalid area.' });
+    }
+
+    let fields = [];
+    let params = [];
+    if (role) { fields.push('role = ?'); params.push(role); }
+    if (area) { fields.push('area = ?'); params.push(area); }
+    if (fields.length === 0) return res.status(400).json({ error: 'No fields to update.' });
+    params.push(userId);
+
+    db.run(`UPDATE Users SET ${fields.join(', ')} WHERE id = ?`, params, function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'User updated successfully.' });
+    });
+});
+
+// DELETE a user account (admin only — cannot delete self or other admins)
+app.delete('/api/admin/users/:id', requireAdmin, (req, res) => {
+    const targetId = req.params.id;
+    const requesterId = req.query.requesterId;
+
+    if (String(targetId) === String(requesterId)) {
+        return res.status(400).json({ error: 'You cannot delete your own admin account.' });
+    }
+
+    db.get(`SELECT role FROM Users WHERE id = ?`, [targetId], (err, user) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!user) return res.status(404).json({ error: 'User not found.' });
+        if (user.role === 'admin') return res.status(403).json({ error: 'Cannot delete another admin account.' });
+
+        db.run(`DELETE FROM Users WHERE id = ?`, [targetId], function (err2) {
+            if (err2) return res.status(500).json({ error: err2.message });
+            res.json({ message: 'User deleted successfully.' });
+        });
+    });
+});
+
+// ─────────────────────────────────────────────
 app.listen(port, () => {
     console.log(`RoadWatch server running on port ${port}`);
 });
