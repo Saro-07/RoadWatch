@@ -1,7 +1,9 @@
 :root {
   --bg-dark: #0a0a0c;
+  --bg-color: #0a0a0c;
   --bg-card: rgba(20, 20, 24, 0.7);
   --bg-card-hover: rgba(30, 30, 36, 0.8);
+  --surface-color: #13131a;
   --text-primary: #ffffff;
   --text-secondary: #a0a0ab;
   --accent-primary: #3b82f6; /* Blue */
@@ -184,3 +186,12 @@ p { line-height: 1.6; color: var(--text-secondary); }
 .delay-1 { animation-delay: 0.1s; }
 .delay-2 { animation-delay: 0.2s; }
 .delay-3 { animation-delay: 0.3s; }
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}

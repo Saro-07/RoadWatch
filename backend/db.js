@@ -45,8 +45,21 @@ function initializeDb() {
             )
         `);
 
-        // Insert default users for testing if they don't exist
-        // Note: Password for all is 'password123'
+        db.run(`
+            CREATE TABLE IF NOT EXISTS Notifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                userId INTEGER NOT NULL,
+                ticketId INTEGER,
+                message TEXT NOT NULL,
+                isRead INTEGER DEFAULT 0,
+                createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(userId) REFERENCES Users(id),
+                FOREIGN KEY(ticketId) REFERENCES Tickets(id)
+            )
+        `);
+
+        // Insert default seeded users for testing if they don't exist
+        // Passwords stored as plain text for pre-seeded accounts; new registrations use bcrypt
         db.run(`
             INSERT OR IGNORE INTO Users (username, password, role, area) VALUES 
             ('citizen1', 'password123', 'citizen', 'Downtown'),

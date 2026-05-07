@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState } from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { LayoutDashboard, AlertTriangle, Map as MapIcon, List, Bell, LogOut, User } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
@@ -8,10 +8,21 @@ import Tickets from './pages/Tickets';
 import Login from './pages/Login';
 import Profile from './pages/Profile';
 import { AuthContext } from './context/AuthContext';
+import { NotificationProvider } from './context/NotificationContext';
+import { NotificationContext } from './context/NotificationContext';
+import NotificationPanel from './components/NotificationPanel';
 import './App.css';
 
-function App() {
+// Inner app that can access both Auth and Notification contexts
+function AppShell() {
   const { user, logout } = useContext(AuthContext);
+  const { unreadCount, fetchNotifications } = useContext(NotificationContext);
+  const [notifOpen, setNotifOpen] = useState(false);
+
+  const openNotifPanel = () => {
+    setNotifOpen(true);
+    fetchNotifications(); // Refresh on open
+  };
 
   if (!user) {
     return (
@@ -20,6 +31,7 @@ function App() {
       </Routes>
     );
   }
+
   return (
     <div className="app-container">
       {/* Sidebar */}
@@ -28,31 +40,33 @@ function App() {
           <AlertTriangle color="var(--accent-primary)" size={28} />
           <h2>RoadWatch</h2>
         </div>
-        
+
         <nav className="sidebar-nav" style={{ flex: 1 }}>
-          <NavLink to="/" className={({isActive}) => isActive ? "nav-item active" : "nav-item"} end>
+          <NavLink to="/" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'} end>
             <LayoutDashboard size={20} />
             <span>{user?.role === 'contractor' ? 'Workspace' : 'Dashboard'}</span>
           </NavLink>
-          
+
           {user?.role === 'citizen' && (
-            <NavLink to="/report" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
+            <NavLink to="/report" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
               <AlertTriangle size={20} />
               <span>Report Issue</span>
             </NavLink>
           )}
 
-          <NavLink to="/map" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
+          <NavLink to="/map" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
             <MapIcon size={20} />
             <span>Road Health Map</span>
           </NavLink>
 
-          <NavLink to="/tickets" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
+          <NavLink to="/tickets" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
             <List size={20} />
-            <span>{user?.role === 'contractor' ? 'My Assigned Tickets' : user?.role === 'official' ? 'All Tickets' : 'Tickets & Status'}</span>
+            <span>
+              {user?.role === 'contractor' ? 'My Assigned Tickets' : user?.role === 'official' ? 'All Tickets' : 'Tickets & Status'}
+            </span>
           </NavLink>
 
-          <NavLink to="/profile" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
+          <NavLink to="/profile" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
             <User size={20} />
             <span>Profile</span>
           </NavLink>
@@ -77,9 +91,37 @@ function App() {
         <header className="top-header glass-panel">
           <h3 style={{ textTransform: 'capitalize' }}>Welcome back, {user.username}</h3>
           <div className="actions">
-            <button className="icon-btn"><Bell size={20} /></button>
+            {/* Bell with unread badge */}
+            <button
+              className="icon-btn"
+              onClick={openNotifPanel}
+              title="Notifications"
+              style={{ position: 'relative' }}
+            >
+              <Bell size={20} />
+              {unreadCount > 0 && (
+                <span style={{
+                  position: 'absolute',
+                  top: '-4px', right: '-4px',
+                  background: 'var(--accent-primary)',
+                  color: 'white',
+                  borderRadius: '50%',
+                  width: '18px', height: '18px',
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  lineHeight: 1,
+                  border: '2px solid var(--bg-color)',
+                }}>
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
+
             {user?.role === 'citizen' && (
-              <button className="btn btn-primary" onClick={() => window.location.href='/report'}>
+              <button className="btn btn-primary" onClick={() => window.location.href = '/report'}>
                 + New Report
               </button>
             )}
@@ -96,7 +138,18 @@ function App() {
           </Routes>
         </div>
       </main>
+
+      {/* Notification slide-in panel */}
+      <NotificationPanel isOpen={notifOpen} onClose={() => setNotifOpen(false)} />
     </div>
+  );
+}
+
+function App() {
+  return (
+    <NotificationProvider>
+      <AppShell />
+    </NotificationProvider>
   );
 }
 
