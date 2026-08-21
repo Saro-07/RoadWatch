@@ -1,6 +1,52 @@
-node_modules/
-.env
-database.sqlite
-uploads/
+# Build
+*.apk
+*.aab
+*.class
+*.dex
+build/
 dist/
+
+# Gradle
+.gradle/
+gradle-app.setting
+
+# Android Studio
+.idea/
+*.iml
+*.iws
+*.ipr
+.classpath
+.project
+.settings/
+.vscode/
+
+# Local configuration file
+local.properties
+gradle.properties
+
+# Generated files
+gen/
+out/
 .DS_Store
+
+# Dependencies
+.m2
+*.jar
+*.rar
+*.zip
+*.tar.gz
+
+# Mac files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Node (for frontend)
+node_modules/
+yarn-error.log
+npm-debug.log
+
+# Environments
+.env
+.env.local
+.env.*.local
